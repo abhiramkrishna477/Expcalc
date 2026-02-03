@@ -207,10 +207,11 @@
         #client-preview-text {
             background: rgba(0,0,0,0.2);
             border: 1px solid var(--border);
-            height: 200px;
+            height: 220px;
             font-size: 0.85rem;
             color: var(--text-muted);
             margin-top: 10px;
+            line-height: 1.5;
         }
 
         .btn-group { display: flex; flex-direction: column; gap: 10px; margin-top: 24px; }
@@ -344,7 +345,7 @@
         </div>
 
         <div class="live-preview-area">
-            <h2>Client Quote Preview</h2>
+            <h2>WhatsApp Quote Preview</h2>
             <textarea id="client-preview-text" readonly></textarea>
         </div>
 
@@ -426,7 +427,13 @@
 
     async function loadDashboardStats() {
         if (!supabaseClient) return;
-        const { data } = await supabaseClient.from('projects').select('*, expenses(amount)');
+        
+        // Filter logic: Only get projects for the current system month for the "Monthly" label
+        const currentMonth = months[new Date().getMonth()];
+        const { data } = await supabaseClient.from('projects')
+            .select('*, expenses(amount)')
+            .eq('month_name', currentMonth);
+
         if (data) {
             state.allProjects = data;
             const revenue = data.reduce((acc, p) => {
@@ -484,7 +491,7 @@
                     <div style="font-size:0.8rem; color:var(--text-muted)">${pCount} Projects</div>
                 </div>
                 <div style="display:flex; gap:15px; align-items:center;">
-                    <button class="btn-del" onclick="event.stopPropagation(); handleDeleteClient('${c.id}')">🗑️</button>
+                    <button class="btn-del" title="Delete Client" onclick="event.stopPropagation(); handleDeleteClient('${c.id}')">🗑️</button>
                     <span>›</span>
                 </div>`;
             div.onclick = () => { state.selectedClient = c; renderProjects(); router('projects'); };
@@ -515,7 +522,7 @@
                     <div>
                         <div style="font-weight:700; color:var(--primary)">${formatINR(total)}</div>
                     </div>
-                    <button class="btn-del" onclick="event.stopPropagation(); handleDeleteProject('${p.id}')">🗑️</button>
+                    <button class="btn-del" title="Delete Project" onclick="event.stopPropagation(); handleDeleteProject('${p.id}')">🗑️</button>
                 </div>`;
             div.onclick = () => { state.selectedProject = p; renderDetails(); router('details'); };
             list.appendChild(div);
