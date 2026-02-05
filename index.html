@@ -129,6 +129,7 @@
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
         }
 
+        /* --- DASHBOARD STYLES --- */
         .brand-dashboard {
             background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
             border-radius: 20px;
@@ -208,6 +209,89 @@
             margin: 0;
         }
 
+        /* --- ESTIMATE VS ACTUALS TOGGLE --- */
+        .toggle-group {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 4px;
+            border-radius: 16px;
+            display: flex;
+            margin-bottom: 20px;
+        }
+
+        .toggle-option {
+            flex: 1;
+            text-align: center;
+            padding: 12px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toggle-option.active {
+            background: var(--bg-input);
+            color: white;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        /* --- BUDGET DASHBOARD CARD --- */
+        .budget-overview {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+
+        .budget-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 12px;
+        }
+
+        .b-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .b-value {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .progress-track {
+            background: rgba(255, 255, 255, 0.1);
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 15px;
+            margin-bottom: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--success);
+            width: 0%;
+            transition: width 0.5s ease, background-color 0.3s;
+        }
+
+        .remaining-text {
+            text-align: right;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--success);
+        }
+
+        /* --- INPUTS & FORMS --- */
         .btn-add-card {
             background: rgba(99, 102, 241, 0.05);
             border: 1px dashed var(--primary);
@@ -338,6 +422,7 @@
 
         .expense-row input {
             padding: 10px;
+            text-align: right;
         }
 
         .btn-del {
@@ -672,6 +757,33 @@
             display: inline-block;
         }
 
+        /* Report Table for Actuals */
+        .pdf-report-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .pdf-report-table th,
+        .pdf-report-table td {
+            text-align: left;
+            padding: 8px 4px;
+            font-size: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .pdf-report-table th {
+            text-transform: uppercase;
+            font-weight: 700;
+            color: var(--pdf-gray);
+            border-bottom: 2px solid var(--pdf-dark);
+        }
+
+        .pdf-report-table td:last-child,
+        .pdf-report-table th:last-child {
+            text-align: right;
+        }
+
         /* Footer */
         .pdf-notes {
             margin-bottom: 10px;
@@ -724,7 +836,7 @@
 
     <div id="loading-overlay">
         <div class="spinner"></div>
-        <div style="font-weight: 600;">Generating Proposal...</div>
+        <div style="font-weight: 600;">Processing...</div>
     </div>
 
     <div id="app">
@@ -785,6 +897,38 @@
                 <button class="btn-del" onclick="handleDeleteCurrentProject()" style="padding:10px;">🗑️</button>
             </div>
 
+            <!-- TOGGLE SWITCH -->
+            <div class="toggle-group" style="margin-top:20px;">
+                <div id="toggle-est" class="toggle-option active" onclick="toggleViewMode('ESTIMATE')">
+                    📄 Estimate
+                </div>
+                <div id="toggle-act" class="toggle-option" onclick="toggleViewMode('ACTUALS')">
+                    💰 Actuals
+                </div>
+            </div>
+
+            <!-- BUDGET DASHBOARD (New) -->
+            <div class="budget-overview">
+                <div class="budget-row">
+                    <div>
+                        <div class="b-label" style="opacity:0.8;">Budget:</div>
+                        <div class="b-value" id="db-budget">₹0</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div class="b-label" style="opacity:0.8;">Spent:</div>
+                        <div class="b-value" id="db-spent">₹0</div>
+                    </div>
+                </div>
+
+                <div class="progress-track">
+                    <div id="db-progress" class="progress-fill"></div>
+                </div>
+
+                <div class="remaining-text">
+                    Remaining: <span id="db-remaining">₹0</span>
+                </div>
+            </div>
+
             <div style="margin-top:20px;">
                 <label>Video Category</label>
                 <div class="category-selector">
@@ -795,7 +939,14 @@
             </div>
 
             <div class="form-group">
-                <label>Shoot Date</label>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <label style="margin:0;">Shoot Date</label>
+                    <div style="display:flex; align-items:center; gap:5px;">
+                        <input type="checkbox" id="chk-unscheduled" style="width:auto; margin:0;"
+                            onchange="toggleDateInput()">
+                        <span style="font-size:0.75rem; color:var(--text-muted);">Unscheduled</span>
+                    </div>
+                </div>
                 <input type="date" id="inp-date" oninput="calculate()">
             </div>
 
@@ -819,11 +970,12 @@
                 </div>
             </div>
 
-            <h2>Expenses (Per Day)</h2>
+            <h2><span id="expenses-header">Expenses (Per Day)</span></h2>
             <div id="expenses-container"></div>
             <button class="btn-add-expense" onclick="addCustomExpenseRow()">+ Add Custom Expense</button>
 
-            <div class="calc-card">
+            <!-- Calculation Card (Visible only in Estimate Mode) -->
+            <div class="calc-card" id="estimate-calc-card">
                 <div class="calc-row">
                     <span>Production Cost:</span>
                     <span id="val-prod">₹0</span>
@@ -838,6 +990,22 @@
                 </div>
             </div>
 
+            <!-- Calculation Card (Visible only in Actuals Mode) -->
+            <div class="calc-card" id="actuals-calc-card" style="display:none;">
+                <div class="calc-row">
+                    <span>Actual Production Cost:</span>
+                    <span id="val-act-prod">₹0</span>
+                </div>
+                <div class="calc-row" style="color:var(--text-muted); font-size:0.9rem;">
+                    <span>Company Cut (Fixed from Est):</span>
+                    <span id="val-act-cut">₹0</span>
+                </div>
+                <div class="calc-row total">
+                    <span>Grand Total Spent:</span>
+                    <span id="val-act-total">₹0</span>
+                </div>
+            </div>
+
             <div class="live-preview-area">
                 <h2>Actions</h2>
                 <div class="btn-group">
@@ -845,7 +1013,13 @@
 
                     <!-- PREVIEW PDF BUTTON -->
                     <button class="btn-action btn-pdf" onclick="generateProposal()">
-                        👁️ Preview Proposal (PDF)
+                        👁️ Estimate Proposal (PDF)
+                    </button>
+
+                    <!-- REPORT PDF BUTTON (NEW) -->
+                    <button class="btn-action btn-pdf"
+                        style="background:#eef2ff; color:#312e81; border:1px solid #312e81;" onclick="generateReport()">
+                        📊 Production Report (PDF)
                     </button>
 
                     <!-- WHATSAPP BUTTON -->
@@ -862,14 +1036,21 @@
 
     <!-- PDF TEMPLATE CONTAINER -->
     <div id="pdf-container">
+        <!-- 1. ESTIMATE PROPOSAL TEMPLATE -->
         <div id="proposal-content" class="pdf-scope">
             <div class="pdf-page">
-
-                <!-- HEADER -->
                 <div class="pdf-header">
-                    <div>
-                        <!-- Black Logo SVG -->
-                        <img src="aigfox_logo_2_black.png" alt="Aigfox Black Logo" class="pdf-logo-img">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <img src="aigfox_logo_2_black.png" alt="Aigfox Black Logo" class="pdf-logo-img"
+                            style="margin-bottom: 0;">
+                        <div style="line-height: 1;">
+                            <div
+                                style="color: #000; font-weight: 800; font-size: 28px; letter-spacing: -1px; font-family: 'Plus Jakarta Sans', sans-serif;">
+                                AIGFOX</div>
+                            <div
+                                style="color: #000; font-weight: 400; font-size: 17px; letter-spacing: 2px; margin-left:1px; font-family: 'Plus Jakarta Sans', sans-serif;">
+                                ORIGINALS</div>
+                        </div>
                     </div>
                     <div class="pdf-client-info">
                         <strong>PREPARED FOR:</strong><br>
@@ -880,7 +1061,6 @@
 
                 <div class="pdf-doc-title">Production Estimate</div>
 
-                <!-- HIGHLIGHTED DATE & CATEGORY -->
                 <div style="margin-bottom: 20px;">
                     <span class="pdf-highlight-box" id="pdf-date-box">SHOOT: OCT 23, 2025</span>
                     <span class="pdf-highlight-box" style="background:#444; margin-left: 5px;"
@@ -893,7 +1073,6 @@
                     assets from the previous shoot, we can move straight to production.
                 </div>
 
-                <!-- SINGLE OPTION -->
                 <div class="pdf-plan-box">
                     <div class="pdf-plan-header">
                         <div style="max-width: 60%;">
@@ -909,34 +1088,91 @@
 
                     <ul class="pdf-features-grid" id="pdf-features">
                         <!-- Dynamic List Items will go here -->
-                        <li>Sony FX3 + a7 IV Cinema Kit</li>
-                        <li>Professional Editing & Color Grading</li>
-                        <li>Dedicated Creative Director</li>
-                        <li>Advanced Lighting Setup</li>
-                        <li>Full Licensing Rights</li>
                     </ul>
                 </div>
 
-                <!-- ADDITIONAL NOTES -->
                 <div class="pdf-notes">
                     <strong>Note on High-End Production:</strong>
                     If you require the Cinema Package (Red Raptor/Multi-cam) for this specific campaign, the estimate
                     can be upgraded. Please let us know if you want to proceed with this tier instead.
                 </div>
 
-                <!-- FOOTER / APPROVAL -->
                 <div class="pdf-total-section">
                     <div class="pdf-terms">
                         <strong>TERMS:</strong> 60% Advance to confirm booking. Balance due upon final delivery.
                         All raw files remain property of Aigfox until final settlement.
-                        Rates include standard licensing for digital use.
                     </div>
                     <div class="pdf-sign">
                         <div class="pdf-sign-name">Minhaj Sadique</div>
                         <div class="pdf-sign-role">Creative Director</div>
                     </div>
                 </div>
+            </div>
+        </div>
 
+        <!-- 2. PRODUCTION REPORT TEMPLATE (NEW) -->
+        <div id="report-content" class="pdf-scope">
+            <div class="pdf-page">
+                <div class="pdf-header">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <img src="aigfox_logo_2_black.png" alt="Aigfox Black Logo" class="pdf-logo-img"
+                            style="margin-bottom: 0;">
+                        <div style="line-height: 1;">
+                            <div
+                                style="color: #000; font-weight: 800; font-size: 28px; letter-spacing: -1px; font-family: 'Plus Jakarta Sans', sans-serif;">
+                                AIGFOX</div>
+                            <div
+                                style="color: #000; font-weight: 400; font-size: 17px; letter-spacing: 2px; margin-left:1px; font-family: 'Plus Jakarta Sans', sans-serif;">
+                                ORIGINALS</div>
+                        </div>
+                    </div>
+                    <div class="pdf-client-info">
+                        <strong>PRODUCTION REPORT</strong><br>
+                        <span id="rpt-client-name">Client Name</span><br>
+                        Date: <span id="rpt-date">Oct 23, 2025</span>
+                    </div>
+                </div>
+
+                <div class="pdf-doc-title">Cost Summary</div>
+
+                <div class="pdf-intro" style="margin-bottom: 20px;">
+                    Below is the breakdown of the approved budget versus actual expenses incurred during production.
+                </div>
+
+                <!-- Report Table -->
+                <table class="pdf-report-table">
+                    <thead>
+                        <tr>
+                            <th>Category</th>
+                            <th>Budget</th>
+                            <th>Actual</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rpt-table-body">
+                        <!-- Dynamic Rows -->
+                    </tbody>
+                </table>
+
+                <div class="pdf-plan-box" style="background:#f9fafb; border:1px solid #ddd;">
+                    <div class="pdf-plan-header" style="border:none; padding:0; margin:0; align-items:center;">
+                        <div>
+                            <div class="pdf-plan-name" style="font-size:12px;">Total Spent</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div class="pdf-price" id="rpt-total-spent" style="font-size:18px;">₹0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pdf-total-section">
+                    <div class="pdf-terms">
+                        <strong>STATUS:</strong> <span id="rpt-status" style="font-weight: 800;">Under Budget</span>
+                    </div>
+                    <div class="pdf-sign">
+                        <div class="pdf-sign-name">Abhiram Krishna</div>
+                        <div class="pdf-sign-role">Creative Producer</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -980,9 +1216,10 @@
             selectedMonth: null,
             selectedClient: null,
             selectedProject: null,
-            expensesData: {},
+            expensesData: {}, // Structure: { "Category": { estimate: 0, actual: 0 } }
             customRows: [],
-            allProjects: []
+            allProjects: [],
+            viewMode: 'ESTIMATE' // 'ESTIMATE' or 'ACTUALS'
         };
 
         const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -1122,32 +1359,125 @@
             document.getElementById('inp-videos').value = p.videos || 1;
             document.getElementById('inp-photos').value = p.photos || 0;
 
-            setCategory(p.category || 'PROMOTIONAL', null);
-
-            if (!supabaseClient) return;
-            const { data: expenses } = await supabaseClient.from('expenses').select('*').eq('project_id', p.id);
-
-            const container = document.getElementById('expenses-container');
-            container.innerHTML = '';
+            // 1. Initialize State immediately to prevent crashes in calculate()
             state.expensesData = {};
             state.customRows = [];
-
             baseCategories.forEach(cat => {
-                const ex = expenses.find(e => e.category_name === cat);
-                const val = ex ? ex.amount : 0;
-                state.expensesData[cat] = val;
+                state.expensesData[cat] = { estimate: 0, actual: 0 };
+            });
+
+            // Now safe to call functions that rely on expensesData
+            setCategory(p.category || 'PROMOTIONAL', null);
+
+            // Default to Estimate View when opening
+            state.viewMode = 'ESTIMATE';
+            updateViewUI();
+
+            if (!supabaseClient) {
+                // Even if offline, we need to render the empty list
+                renderExpensesList();
+                calculate();
+                return;
+            }
+
+            // Fetch both amount (estimate) and actual_amount
+            const { data: expenses } = await supabaseClient.from('expenses').select('*').eq('project_id', p.id);
+
+            // 2. Populate from DB (Merge into existing state)
+            if (expenses) {
+                expenses.forEach(e => {
+                    const catName = e.category_name;
+                    // Add custom if not exists
+                    if (!state.expensesData[catName]) {
+                        state.expensesData[catName] = { estimate: 0, actual: 0 };
+                        // Only add to custom rows if not a base category
+                        if (!baseCategories.includes(catName)) {
+                            state.customRows.push(catName);
+                        }
+                    }
+
+                    // Set values
+                    if (state.expensesData[catName]) {
+                        state.expensesData[catName].estimate = e.amount || 0;
+                        state.expensesData[catName].actual = e.actual_amount || 0;
+                    }
+                });
+            }
+
+            renderExpensesList();
+            calculate();
+        }
+
+        function renderExpensesList() {
+            const container = document.getElementById('expenses-container');
+            container.innerHTML = '';
+
+            // Combine base + custom for rendering
+            const allCats = [...baseCategories, ...state.customRows];
+
+            allCats.forEach(cat => {
+                const data = state.expensesData[cat];
+                if (!data) return; // Guard against undefined data
+
+                const isMisc = cat === 'Other Miscellaneous';
+
+                // Determine which value to show based on view mode
+                // Guard property access
+                const est = data.estimate || 0;
+                const act = data.actual || 0;
+                const valueToShow = state.viewMode === 'ESTIMATE' ? est : act;
+                const isReadOnly = (isMisc && state.viewMode === 'ESTIMATE'); // Misc is auto-calc in Estimate
 
                 const row = document.createElement('div');
                 row.className = 'expense-row';
-                row.innerHTML = `<label>${cat}</label><input type="number" value="${val}" ${cat === 'Other Miscellaneous' ? 'readonly' : ''} oninput="updateCalc('${cat}', this.value)"><div></div>`;
+
+                // Custom row delete button logic
+                let delBtn = '<div></div>';
+                if (state.customRows.includes(cat)) {
+                    delBtn = `<button class="btn-del" onclick="deleteExpense('${cat}')">×</button>`;
+                }
+
+                // If custom row, make name editable? No, simple for now.
+                // Just inputs
+                let labelHtml = `<label>${cat}</label>`;
+                if (state.customRows.includes(cat)) {
+                    labelHtml = `<input type="text" value="${cat}" placeholder="Name" onchange="renameCustom('${cat}', this.value)" style="text-align:left; background:transparent; padding:0;">`;
+                }
+
+                row.innerHTML = `
+                    ${labelHtml}
+                    <input type="number" 
+                           value="${valueToShow}" 
+                           ${isReadOnly ? 'readonly' : ''} 
+                           oninput="updateCalc('${cat}', this.value)"
+                           placeholder="0"
+                    >
+                    ${delBtn}
+                `;
+                row.id = 'row-' + cat.replace(/\s+/g, '-');
                 container.appendChild(row);
             });
+        }
 
-            expenses.filter(e => !baseCategories.includes(e.category_name)).forEach(e => {
-                addCustomExpenseRow(e.category_name, e.amount);
-            });
-
+        // --- View Toggling ---
+        function toggleViewMode(mode) {
+            state.viewMode = mode;
+            updateViewUI();
+            renderExpensesList(); // Re-render inputs
             calculate();
+        }
+
+        function updateViewUI() {
+            // Toggle Buttons
+            document.getElementById('toggle-est').className = state.viewMode === 'ESTIMATE' ? 'toggle-option active' : 'toggle-option';
+            document.getElementById('toggle-act').className = state.viewMode === 'ACTUALS' ? 'toggle-option active' : 'toggle-option';
+
+            // Headers
+            document.getElementById('expenses-header').innerText = state.viewMode === 'ESTIMATE' ? "Estimated Expenses (Per Day)" : "Actual Expenses (Total)";
+
+            // Show/Hide Estimate Calc Card
+            document.getElementById('estimate-calc-card').style.display = state.viewMode === 'ESTIMATE' ? 'block' : 'none';
+            document.getElementById('actuals-calc-card').style.display = state.viewMode === 'ACTUALS' ? 'block' : 'none';
         }
 
         // --- Logic ---
@@ -1160,74 +1490,140 @@
         }
 
         function addCustomExpenseRow(name = "", amt = 0) {
-            const id = name || "Custom_" + Date.now();
-            if (!name) state.customRows.push(id);
-            state.expensesData[id] = amt;
+            const id = name || "Custom " + (state.customRows.length + 1);
 
-            const container = document.getElementById('expenses-container');
-            const row = document.createElement('div');
-            row.className = 'expense-row';
-            row.id = 'row-' + id;
-            row.innerHTML = `
-            <input type="text" value="${name}" placeholder="Expense Name" onchange="renameCustom('${id}', this.value)">
-            <input type="number" value="${amt}" oninput="updateCalc('${id}', this.value)">
-            <button class="btn-del" onclick="deleteExpense('${id}')">×</button>
-        `;
-            container.appendChild(row);
+            // Fix for "Cannot read properties of undefined (reading 'actual')"
+            // Ensure we don't add duplicates or mess up state
+            if (!state.expensesData[id]) {
+                state.expensesData[id] = { estimate: 0, actual: 0 };
+                // Only push to rows if it's new
+                if (!state.customRows.includes(id)) {
+                    state.customRows.push(id);
+                }
+            }
+
+            renderExpensesList();
             calculate();
         }
 
         function renameCustom(oldId, newName) {
-            if (!newName) return;
-            const val = state.expensesData[oldId];
+            if (!newName || state.expensesData[newName]) return; // Prevent dupes
+            if (!state.expensesData[oldId]) return; // Guard
+
+            // Move data
+            state.expensesData[newName] = state.expensesData[oldId];
             delete state.expensesData[oldId];
-            state.expensesData[newName] = val;
 
-            const index = state.customRows.indexOf(oldId);
-            if (index > -1) state.customRows[index] = newName;
+            // Update list
+            const idx = state.customRows.indexOf(oldId);
+            if (idx !== -1) state.customRows[idx] = newName;
 
-            const row = document.getElementById('row-' + oldId);
-            row.id = 'row-' + newName;
-            const inputs = row.querySelectorAll('input');
-            inputs[1].setAttribute('oninput', `updateCalc('${newName}', this.value)`);
+            // Re-render to update IDs and listeners
+            renderExpensesList();
             calculate();
         }
 
         function deleteExpense(id) {
-            delete state.expensesData[id];
+            if (state.expensesData[id]) {
+                delete state.expensesData[id];
+            }
             state.customRows = state.customRows.filter(r => r !== id);
-            document.getElementById('row-' + id)?.remove();
+            renderExpensesList();
             calculate();
         }
 
         function updateCalc(key, val) {
-            state.expensesData[key] = parseFloat(val) || 0;
+            const num = parseFloat(val) || 0;
+            // Defensive Check
+            if (!state.expensesData[key]) {
+                state.expensesData[key] = { estimate: 0, actual: 0 };
+            }
+
+            if (state.viewMode === 'ESTIMATE') {
+                state.expensesData[key].estimate = num;
+            } else {
+                state.expensesData[key].actual = num;
+            }
             calculate();
         }
 
         function calculate() {
-            let subtotal = 0;
-            for (let k in state.expensesData) {
-                if (k !== 'Other Miscellaneous') subtotal += state.expensesData[k];
-            }
-
-            const misc = subtotal * 0.10;
-            state.expensesData['Other Miscellaneous'] = misc;
-
-            const inputs = document.querySelectorAll('.expense-row input[readonly]');
-            if (inputs.length) inputs[0].value = Math.round(misc);
+            const miscCat = 'Other Miscellaneous';
+            // Guard against uninitialized state crash
+            if (!state.expensesData || !state.expensesData[miscCat]) return;
 
             const days = parseFloat(document.getElementById('inp-days').value) || 1;
-            const totalProd = (subtotal + misc) * days;
-            const cut = totalProd * 0.20;
-            const grand = totalProd + cut;
 
-            document.getElementById('val-prod').innerText = formatINR(totalProd);
-            document.getElementById('val-cut').innerText = formatINR(cut);
-            const totalStr = formatINR(grand);
-            document.getElementById('val-total').innerText = totalStr;
+            // 1. Calculate Estimate Totals
+            let estSubtotal = 0;
+            for (let k in state.expensesData) {
+                // Defensive check inside loop
+                if (state.expensesData[k] && k !== miscCat) {
+                    estSubtotal += (state.expensesData[k].estimate || 0);
+                }
+            }
+            // Auto-calc Misc for Estimate
+            const estMisc = estSubtotal * 0.10;
+            state.expensesData[miscCat].estimate = estMisc;
 
-            updateLivePreview(totalStr);
+            const totalProdCost = (estSubtotal + estMisc) * days;
+            const companyCut = totalProdCost * 0.20;
+            const grandTotalEst = totalProdCost + companyCut;
+
+            // Update Estimate Card UI
+            document.getElementById('val-prod').innerText = formatINR(totalProdCost);
+            document.getElementById('val-cut').innerText = formatINR(companyCut);
+            document.getElementById('val-total').innerText = formatINR(grandTotalEst);
+
+            // Re-update misc input if visible
+            if (state.viewMode === 'ESTIMATE') {
+                const miscRow = document.getElementById('row-Other-Miscellaneous');
+                if (miscRow) miscRow.querySelector('input').value = Math.round(estMisc);
+            }
+
+            // 2. Calculate Actuals Totals (Simple Sum)
+            let totalActuals = 0;
+            for (let k in state.expensesData) {
+                if (state.expensesData[k]) {
+                    totalActuals += (state.expensesData[k].actual || 0);
+                }
+            }
+
+            // Update Actuals Card UI
+            document.getElementById('val-act-total').innerText = "";
+
+
+            // Update Actuals Card UI
+            // Requirement: "company cut calculated in the estimation section should be same for the actuals section"
+            // calc companyCut was calculated above
+            const grandTotalAct = totalActuals + companyCut;
+
+            document.getElementById('val-act-prod').innerText = formatINR(totalActuals);
+            document.getElementById('val-act-cut').innerText = formatINR(companyCut);
+            document.getElementById('val-act-total').innerText = formatINR(grandTotalAct);
+
+            // 3. Update Dashboard
+            updateDashboard(grandTotalEst, grandTotalAct);
+            updateLivePreview(formatINR(grandTotalEst));
+        }
+
+        function updateDashboard(budget, spent) {
+            document.getElementById('db-budget').innerText = formatINR(budget);
+            document.getElementById('db-spent').innerText = formatINR(spent);
+
+            const remaining = budget - spent;
+            const remEl = document.getElementById('db-remaining');
+            remEl.innerText = formatINR(remaining);
+            remEl.style.color = remaining >= 0 ? 'var(--success)' : 'var(--danger)';
+
+            // Progress Bar
+            let pct = 0;
+            if (budget > 0) pct = (spent / budget) * 100;
+            if (pct > 100) pct = 100;
+
+            const bar = document.getElementById('db-progress');
+            bar.style.width = pct + '%';
+            bar.style.backgroundColor = remaining >= 0 ? 'var(--success)' : 'var(--danger)';
         }
 
         function updateLivePreview(totalStr) {
@@ -1240,24 +1636,13 @@
             t += `Shoot Days: ${document.getElementById('inp-days').value}\n\n`;
             t += `Breakdown:\n`;
 
+            // Only showing estimates in whatsapp text for quote
             Object.entries(state.expensesData).forEach(([k, v]) => {
-                if (v > 0) t += `* ${k}: ${formatINR(v)}\n`;
+                if (v.estimate > 0) t += `* ${k}: ${formatINR(v.estimate)}\n`;
             });
 
             t += `\nTotal Quote: ${totalStr}`;
             document.getElementById('client-preview-text').value = t;
-        }
-
-        async function handleDeleteClient(id) {
-            if (!confirm("Delete this client and all their projects?")) return;
-            await supabaseClient.from('clients').delete().eq('id', id);
-            renderClients();
-        }
-
-        async function handleDeleteProject(id) {
-            if (!confirm("Delete this project?")) return;
-            await supabaseClient.from('projects').delete().eq('id', id);
-            renderProjects();
         }
 
         async function handleDeleteCurrentProject() {
@@ -1273,6 +1658,8 @@
             btn.innerText = "Saving...";
 
             const p = state.selectedProject;
+
+            // Update Project Meta
             await supabaseClient.from('projects').update({
                 date: document.getElementById('inp-date').value,
                 days: document.getElementById('inp-days').value,
@@ -1282,20 +1669,27 @@
                 category: p.category
             }).eq('id', p.id);
 
+            // Update Expenses
+            // Strategy: Delete all for project and re-insert. 
+            // Since we hold all state in memory, this is safe and easy.
             await supabaseClient.from('expenses').delete().eq('project_id', p.id);
 
-            const toInsert = Object.entries(state.expensesData).map(([name, amt]) => ({
+            const toInsert = Object.entries(state.expensesData).map(([name, data]) => ({
                 project_id: p.id,
                 category_name: name,
-                amount: amt
+                amount: data.estimate,
+                actual_amount: data.actual // NEW FIELD
             }));
 
-            await supabaseClient.from('expenses').insert(toInsert);
+            if (toInsert.length > 0) {
+                await supabaseClient.from('expenses').insert(toInsert);
+            }
 
             btn.innerText = "Save Changes";
             showToast("Changes Saved!");
         }
 
+        // ... [Client/Project Create functions same as before] ...
         async function submitNewClient() {
             if (!supabaseClient) return;
             const name = document.getElementById('modal-client-name').value;
@@ -1332,65 +1726,238 @@
             renderProjects();
         }
 
+        async function handleDeleteClient(id) {
+            if (!confirm("Delete this client and all their projects?")) return;
+            await supabaseClient.from('clients').delete().eq('id', id);
+            renderClients();
+        }
+
+        async function handleDeleteProject(id) {
+            if (!confirm("Delete this project?")) return;
+            await supabaseClient.from('projects').delete().eq('id', id);
+            renderProjects();
+        }
+
         function sendWhatsApp(target) {
             const text = document.getElementById('client-preview-text').value;
             const num = target === 'admin' ? "919562305524" : "";
             window.open(`https://wa.me/${num}?text=${encodeURIComponent(text)}`, '_blank');
         }
 
-        // --- PDF GENERATOR FUNCTION ---
+        // --- PDF GENERATOR (PROPOSAL) ---
         function generateProposal() {
             const overlay = document.getElementById('loading-overlay');
             overlay.style.display = 'flex';
-
             const pdfContainer = document.getElementById('pdf-container');
             pdfContainer.classList.add('generating');
 
             // Inject Data
             const clientName = state.selectedClient ? state.selectedClient.name : "Client";
             const projName = state.selectedProject ? state.selectedProject.name : "Video Project";
-            const categoryCode = state.selectedProject ? state.selectedProject.category : "PROMOTIONAL";
 
-            // --- FIX: Map Categories to new Titles ---
-            let displayCategory = "Promotional Films"; // default
-            if (categoryCode === 'CONCEPT') displayCategory = "Concept Films";
-            else if (categoryCode === 'BOTH') displayCategory = "Concept + Promotion Films";
-            else if (categoryCode === 'PROMOTIONAL') displayCategory = "Promotional Films";
-
+            // Date Logic
+            const isUnscheduled = document.getElementById('chk-unscheduled').checked;
             const dateRaw = document.getElementById('inp-date').value;
-            const dateObj = dateRaw ? new Date(dateRaw) : new Date();
-            const formattedDate = dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).toUpperCase();
+            let dateText = "SHOOT: DATE TBD";
+
+            if (!isUnscheduled && dateRaw) {
+                const dateObj = new Date(dateRaw);
+                const formattedDate = dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).toUpperCase();
+                dateText = `SHOOT: ${formattedDate}`;
+            } else if (isUnscheduled) {
+                dateText = "SHOOT: NON SCHEDULED";
+            }
+
+            document.getElementById('pdf-date-box').innerText = dateText;
+            document.getElementById('pdf-client-name').innerText = clientName;
+            document.getElementById('pdf-project-name').innerText = projName;
+            document.getElementById('pdf-price').innerText = document.getElementById('val-total').innerText;
 
             const days = document.getElementById('inp-days').value;
             const videos = document.getElementById('inp-videos').value;
             const photos = document.getElementById('inp-photos').value;
-            const total = document.getElementById('val-total').innerText;
-
-            const refNum = `#EST-${dateObj.getFullYear()}-${(dateObj.getMonth() + 1).toString().padStart(2, '0')}-${Math.floor(Math.random() * 100)}`;
-
-            document.getElementById('pdf-date-box').innerText = `SHOOT: ${formattedDate}`;
-            document.getElementById('pdf-cat-box').innerText = displayCategory.toUpperCase(); // Ensure uppercase match design
-            document.getElementById('pdf-ref').innerText = refNum;
-            document.getElementById('pdf-client-name').innerText = clientName;
-            document.getElementById('pdf-project-name').innerText = projName;
-            document.getElementById('pdf-price').innerText = total;
 
             const featureList = document.getElementById('pdf-features');
-            featureList.innerHTML = `
-            <li>${days} Day Shoot Schedule</li>
-            <li>${videos} High-Fidelity Reels/Videos</li>
-            <li>${photos} Edited High-Res Photos</li>
+
+            // Build Features List
+            let listHtml = ``;
+            listHtml += `<li>${days} Day Shoot Schedule</li>`;
+            listHtml += `<li>${videos} High-Fidelity Reels/Videos</li>`;
+
+            // Conditional Photo Line
+            if (parseInt(photos) > 0) {
+                listHtml += `<li>${photos} Edited High-Res Photos</li>`;
+            }
+
+            listHtml += `
             <li>Sony FX3 + a7 IV Cinema Kit</li>
             <li>Professional Editing & Color Grading</li>
             <li>Dedicated Creative Director</li>
             <li>Advanced Lighting Setup</li>
             <li>Full Licensing Rights</li>
-        `;
+            `;
+
+            featureList.innerHTML = listHtml;
 
             const element = document.getElementById('proposal-content');
+            const fileName = `${clientName}_${state.selectedMonth}_${projName}.pdf`;
+            downloadPDF(element, fileName, overlay, pdfContainer);
+        }
+
+        function toggleDateInput() {
+            const chk = document.getElementById('chk-unscheduled');
+            const inp = document.getElementById('inp-date');
+            if (chk.checked) {
+                inp.disabled = true;
+                inp.style.opacity = '0.5';
+            } else {
+                inp.disabled = false;
+                inp.style.opacity = '1';
+            }
+        }
+
+        // --- PDF GENERATOR (REPORT) ---
+        function generateReport() {
+            const overlay = document.getElementById('loading-overlay');
+            overlay.style.display = 'flex';
+            const pdfContainer = document.getElementById('pdf-container');
+            pdfContainer.classList.add('generating');
+
+            // 1. Header Info
+            const clientName = state.selectedClient ? state.selectedClient.name : "Client";
+            document.getElementById('rpt-client-name').innerText = clientName;
+            document.getElementById('rpt-date').innerText = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+            // 2. Build Table Rows
+            const tbody = document.getElementById('rpt-table-body');
+            tbody.innerHTML = '';
+
+            // Rewrite Table Header to include P/L
+            const thead = document.querySelector('.pdf-report-table thead tr');
+            thead.innerHTML = `
+                <th>Category</th>
+                <th>Budget</th>
+                <th>Actual</th>
+                <th>P/L</th>
+            `;
+
+            let totalActual = 0;
+            let totalBudget = 0;
+            const days = parseFloat(document.getElementById('inp-days').value) || 1;
+
+            // Sort so miscellaneous is last
+            const sortedKeys = Object.keys(state.expensesData).sort((a, b) => a === 'Other Miscellaneous' ? 1 : -1);
+
+            sortedKeys.forEach(key => {
+                const data = state.expensesData[key];
+                if (!data) return;
+
+                // Logic: 
+                // Misc works differently? No, in calculate() we derived it.
+                // But here we need to READ the values generated/stored.
+                // Note: calculate() runs on input, updating state.expensesData[misc].estimate.
+                // So state is up to date.
+
+                // Line item budget
+                const lineBudget = data.estimate * ((key === 'Other Miscellaneous') ? 1 : days);
+                // Wait! In calculate(): totalProdCost = (estSubtotal + estMisc) * days; 
+                // This implies estMisc is per-day too? 
+                // "const estMisc = estSubtotal * 0.10;" -> derived from per-day subtotal.
+                // So yes, everything in expensesData is "Per Day".
+                // EXCEPT: if the user concept is "Project-based". 
+                // The prompt for calculating total was: `(estSubtotal + estMisc) * days`.
+                // So to get total budget for line item, we multiply by days.
+
+                const lineActual = data.actual || 0;
+                // Wait, is "Actual" per day or total? 
+                // The input placeholder says "Actual Expenses (Total)".
+                // So `data.actual` is TOTAL. `data.estimate` is PER DAY.
+
+                const finalBudget = data.estimate * days;
+                const finalActual = data.actual || 0;
+
+                totalBudget += finalBudget;
+                totalActual += finalActual;
+
+                const diff = finalBudget - finalActual;
+                let plHtml = `<span style="color:#aaa;">-</span>`;
+                if (Math.round(diff) > 0) plHtml = `<span style="color:var(--success);">+${formatINR(diff).replace('₹', '')}</span>`;
+                if (Math.round(diff) < 0) plHtml = `<span style="color:var(--danger);">${formatINR(diff).replace('₹', '')}</span>`;
+
+                if (finalBudget > 0 || finalActual > 0) {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${key}</td>
+                        <td>${formatINR(finalBudget)}</td>
+                        <td>${formatINR(finalActual)}</td>
+                        <td>${plHtml}</td>
+                    `;
+                    tbody.appendChild(tr);
+                }
+            });
+
+            // Add Company Cut Row
+            // Company Cut is calculated from Budget.
+            const cutValStr = document.getElementById('val-cut').innerText;
+            const cutVal = parseFloat(cutValStr.replace(/[₹,]/g, '')) || 0;
+
+            // Cut is fixed based on estimate as per user request
+            const cutBudget = cutVal;
+            const cutActual = cutVal; // Same for actuals
+
+            totalBudget += cutBudget;
+            totalActual += cutActual;
+
+            const trCut = document.createElement('tr');
+            trCut.style.backgroundColor = "#f9f9f9";
+            trCut.style.fontWeight = "600";
+            trCut.innerHTML = `
+                <td>Company Cut (20%)</td>
+                <td>${formatINR(cutBudget)}</td>
+                <td>${formatINR(cutActual)}</td>
+                <td>-</td>
+            `;
+            tbody.appendChild(trCut);
+
+            // 3. Totals (Budget & Actual)
+            // We want to show both.
+            // Replace the simplistic total with a dual-column display
+            const headerRight = document.querySelector('#report-content .pdf-plan-header > div:last-child');
+            headerRight.innerHTML = `
+                <div style="display:flex; gap:30px; text-align:right;">
+                    <div>
+                        <div style="font-size:9px; color:#666; font-weight:600; text-transform:uppercase;">Estimated</div>
+                        <div style="font-size:18px; font-weight:800; color:#000;">${formatINR(totalBudget)}</div>
+                    </div>
+                    <div>
+                        <div style="font-size:9px; color:#666; font-weight:600; text-transform:uppercase;">Actual</div>
+                        <div style="font-size:18px; font-weight:800; color:#000;">${formatINR(totalActual)}</div>
+                    </div>
+                </div>
+            `;
+
+            //document.getElementById('rpt-total-spent').innerText = formatINR(totalActual);
+            document.querySelector('.pdf-plan-name').innerText = "Grand Total";
+
+            // 4. Status
+            const statusEl = document.getElementById('rpt-status');
+            const netDiff = totalBudget - totalActual;
+
+            if (netDiff >= 0) {
+                statusEl.innerHTML = `<span style="background:#22c55e; color:white; padding:4px 8px; border-radius:4px;">UNDER BUDGET (+${formatINR(netDiff)})</span>`;
+            } else {
+                statusEl.innerHTML = `<span style="background:#ef4444; color:white; padding:4px 8px; border-radius:4px;">OVER BUDGET (${formatINR(netDiff)})</span>`;
+            }
+
+            const element = document.getElementById('report-content');
+            const fileName = `${clientName}_${state.selectedMonth}_${state.selectedProject?.name || 'Project'}_Report.pdf`;
+            downloadPDF(element, fileName, overlay, pdfContainer);
+        }
+
+        function downloadPDF(element, filename, overlay, container) {
             const opt = {
                 margin: 0,
-                filename: `Estimate_${clientName.replace(/\s+/g, '_')}.pdf`,
+                filename: filename,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
@@ -1400,13 +1967,13 @@
                 html2pdf().set(opt).from(element).save()
                     .then(() => {
                         overlay.style.display = 'none';
-                        pdfContainer.classList.remove('generating');
+                        container.classList.remove('generating');
                         showToast("PDF Downloaded!");
                     })
                     .catch(err => {
                         console.error(err);
                         overlay.style.display = 'none';
-                        pdfContainer.classList.remove('generating');
+                        container.classList.remove('generating');
                         showToast("Error generating PDF");
                     });
             }, 500);
