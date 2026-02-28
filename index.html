@@ -464,6 +464,7 @@
         .calc-row {
             display: flex;
             justify-content: space-between;
+            align-items: center;
             margin-bottom: 12px;
         }
 
@@ -474,6 +475,29 @@
             font-size: 1.25rem;
             font-weight: 700;
             color: var(--primary);
+        }
+
+        .calc-input {
+            width: 100px;
+            padding: 6px 10px;
+            text-align: right;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: white;
+            font-size: 0.95rem;
+            font-weight: 600;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        
+        .calc-input:focus {
+            border-color: var(--primary);
+        }
+        
+        .calc-input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+            font-weight: 400;
         }
 
         .live-preview-area {
@@ -577,27 +601,19 @@
         }
 
         @keyframes spin {
-            0% {
-                transform: rotate(0deg);
-            }
-
-            100% {
-                transform: rotate(360deg);
-            }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         /* --- PDF GENERATION STYLES (Strict Single Page) --- */
-
         #pdf-container {
             position: fixed;
             top: 0;
             left: 100%;
-            /* Off-screen */
             width: 210mm;
             height: 297mm;
             z-index: -9999;
             background: white;
-            /* Forced clipping to guarantee 1 page */
             overflow: hidden;
             max-height: 297mm;
         }
@@ -621,7 +637,6 @@
         .pdf-page {
             width: 210mm;
             height: 296mm;
-            /* Strictly just under A4 height */
             background: white;
             padding: 10mm 15mm;
             box-sizing: border-box;
@@ -795,7 +810,6 @@
         }
 
         .pdf-total-section {
-            /* FIXED: Removed auto margin to eliminate huge gap */
             margin-top: 40px;
             background: var(--pdf-dark);
             color: white;
@@ -970,19 +984,23 @@
                 </div>
             </div>
 
-            <h2><span id="expenses-header">Expenses (Per Day)</span></h2>
+            <h2><span id="expenses-header">Estimated Expenses</span></h2>
             <div id="expenses-container"></div>
             <button class="btn-add-expense" onclick="addCustomExpenseRow()">+ Add Custom Expense</button>
 
             <!-- Calculation Card (Visible only in Estimate Mode) -->
             <div class="calc-card" id="estimate-calc-card">
                 <div class="calc-row">
-                    <span>Production Cost:</span>
+                    <span>Subtotal:</span>
                     <span id="val-prod">₹0</span>
                 </div>
-                <div class="calc-row" style="color:var(--text-muted); font-size:0.9rem;">
-                    <span>Company Cut (20%):</span>
-                    <span id="val-cut">₹0</span>
+                <div class="calc-row">
+                    <span style="color:var(--text-muted); font-size:0.9rem;">Misc (10%):</span>
+                    <input type="number" id="inp-est-misc" class="calc-input" oninput="overrideSpecial('Misc', 'ESTIMATE', this.value)" placeholder="Auto">
+                </div>
+                <div class="calc-row">
+                    <span style="color:var(--text-muted); font-size:0.9rem;">Company Cut (20%):</span>
+                    <input type="number" id="inp-est-cut" class="calc-input" oninput="overrideSpecial('Cut', 'ESTIMATE', this.value)" placeholder="Auto">
                 </div>
                 <div class="calc-row total">
                     <span>Grand Total:</span>
@@ -993,12 +1011,16 @@
             <!-- Calculation Card (Visible only in Actuals Mode) -->
             <div class="calc-card" id="actuals-calc-card" style="display:none;">
                 <div class="calc-row">
-                    <span>Actual Production Cost:</span>
+                    <span>Actual Subtotal:</span>
                     <span id="val-act-prod">₹0</span>
                 </div>
-                <div class="calc-row" style="color:var(--text-muted); font-size:0.9rem;">
-                    <span>Company Cut (Fixed from Est):</span>
-                    <span id="val-act-cut">₹0</span>
+                <div class="calc-row">
+                    <span style="color:var(--text-muted); font-size:0.9rem;">Actual Misc (10%):</span>
+                    <input type="number" id="inp-act-misc" class="calc-input" oninput="overrideSpecial('Misc', 'ACTUALS', this.value)" placeholder="Auto">
+                </div>
+                <div class="calc-row">
+                    <span style="color:var(--text-muted); font-size:0.9rem;">Actual Cut (20%):</span>
+                    <input type="number" id="inp-act-cut" class="calc-input" oninput="overrideSpecial('Cut', 'ACTUALS', this.value)" placeholder="Auto">
                 </div>
                 <div class="calc-row total">
                     <span>Grand Total Spent:</span>
@@ -1146,6 +1168,7 @@
                             <th>Category</th>
                             <th>Budget</th>
                             <th>Actual</th>
+                            <th>P/L</th>
                         </tr>
                     </thead>
                     <tbody id="rpt-table-body">
@@ -1156,9 +1179,9 @@
                 <div class="pdf-plan-box" style="background:#f9fafb; border:1px solid #ddd;">
                     <div class="pdf-plan-header" style="border:none; padding:0; margin:0; align-items:center;">
                         <div>
-                            <div class="pdf-plan-name" style="font-size:12px;">Total Spent</div>
+                            <div class="pdf-plan-name" style="font-size:12px;">Grand Total</div>
                         </div>
-                        <div style="text-align: right;">
+                        <div style="text-align: right;" id="rpt-header-right">
                             <div class="pdf-price" id="rpt-total-spent" style="font-size:18px;">₹0</div>
                         </div>
                     </div>
@@ -1219,11 +1242,14 @@
             expensesData: {}, // Structure: { "Category": { estimate: 0, actual: 0 } }
             customRows: [],
             allProjects: [],
-            viewMode: 'ESTIMATE' // 'ESTIMATE' or 'ACTUALS'
+            viewMode: 'ESTIMATE', // 'ESTIMATE' or 'ACTUALS'
+            manualMisc: { est: false, act: false },
+            manualCut: { est: false, act: false }
         };
 
         const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-        const baseCategories = ["Director", "Cinematographer", "Equipments Rent", "Food & Travel", "Other Crew", "Editors", "Props & Costume", "Other Miscellaneous"];
+        // Notice 'Other Miscellaneous' has been removed from this core list!
+        const baseCategories = ["Director", "Cinematographer", "Equipments Rent", "Food & Travel", "Other Crew", "Editors", "Props & Costume"];
 
         // --- Initialization ---
         window.onload = () => {
@@ -1258,8 +1284,9 @@
             if (data) {
                 state.allProjects = data;
                 const revenue = data.reduce((acc, p) => {
+                    // Sum up all DB expenses (which now includes your Misc and Cut natively)
                     const base = p.expenses?.reduce((s, e) => s + (e.amount || 0), 0) || 0;
-                    return acc + (base * (p.days || 1) * 1.2);
+                    return acc + base;
                 }, 0);
                 document.getElementById('stat-revenue').innerText = formatINR(revenue);
                 document.getElementById('stat-active').innerText = data.length;
@@ -1330,8 +1357,8 @@
 
             list.innerHTML = '';
             projects.forEach(p => {
-                const base = p.expenses.reduce((s, e) => s + e.amount, 0);
-                const total = base * (p.days || 1) * 1.2;
+                // Because Misc and Cut are now saved to DB, sum of e.amount IS the grand total! No multiplier needed.
+                const total = p.expenses.reduce((s, e) => s + e.amount, 0);
                 const div = document.createElement('div');
                 div.className = 'card';
                 div.innerHTML = `
@@ -1359,14 +1386,16 @@
             document.getElementById('inp-videos').value = p.videos || 1;
             document.getElementById('inp-photos').value = p.photos || 0;
 
-            // 1. Initialize State immediately to prevent crashes in calculate()
+            // Initialize State immediately to prevent crashes in calculate()
             state.expensesData = {};
             state.customRows = [];
+            state.manualMisc = { est: false, act: false };
+            state.manualCut = { est: false, act: false };
+            
             baseCategories.forEach(cat => {
                 state.expensesData[cat] = { estimate: 0, actual: 0 };
             });
 
-            // Now safe to call functions that rely on expensesData
             setCategory(p.category || 'PROMOTIONAL', null);
 
             // Default to Estimate View when opening
@@ -1374,24 +1403,22 @@
             updateViewUI();
 
             if (!supabaseClient) {
-                // Even if offline, we need to render the empty list
                 renderExpensesList();
                 calculate();
                 return;
             }
 
-            // Fetch both amount (estimate) and actual_amount
             const { data: expenses } = await supabaseClient.from('expenses').select('*').eq('project_id', p.id);
 
-            // 2. Populate from DB (Merge into existing state)
+            // Populate from DB (Merge into existing state)
             if (expenses) {
                 expenses.forEach(e => {
                     const catName = e.category_name;
-                    // Add custom if not exists
+                    
                     if (!state.expensesData[catName]) {
                         state.expensesData[catName] = { estimate: 0, actual: 0 };
-                        // Only add to custom rows if not a base category
-                        if (!baseCategories.includes(catName)) {
+                        // If it's a completely custom row (not base list and not our special calculation ones)
+                        if (!baseCategories.includes(catName) && catName !== 'Miscellaneous' && catName !== 'Company Cut') {
                             state.customRows.push(catName);
                         }
                     }
@@ -1400,6 +1427,17 @@
                     if (state.expensesData[catName]) {
                         state.expensesData[catName].estimate = e.amount || 0;
                         state.expensesData[catName].actual = e.actual_amount || 0;
+                        
+                        // We set manual flags to TRUE when reading from the database so we don't accidentally
+                        // overwrite previously saved manual tweaks on the first re-render.
+                        if (catName === 'Miscellaneous') {
+                            state.manualMisc.est = true;
+                            state.manualMisc.act = true;
+                        }
+                        if (catName === 'Company Cut') {
+                            state.manualCut.est = true;
+                            state.manualCut.act = true;
+                        }
                     }
                 });
             }
@@ -1412,33 +1450,27 @@
             const container = document.getElementById('expenses-container');
             container.innerHTML = '';
 
-            // Combine base + custom for rendering
             const allCats = [...baseCategories, ...state.customRows];
 
             allCats.forEach(cat => {
+                // Prevent rendering our special internal calculation rows in the standard list!
+                if (cat === 'Miscellaneous' || cat === 'Company Cut') return;
+                
                 const data = state.expensesData[cat];
-                if (!data) return; // Guard against undefined data
+                if (!data) return; 
 
-                const isMisc = cat === 'Other Miscellaneous';
-
-                // Determine which value to show based on view mode
-                // Guard property access
                 const est = data.estimate || 0;
                 const act = data.actual || 0;
                 const valueToShow = state.viewMode === 'ESTIMATE' ? est : act;
-                const isReadOnly = (isMisc && state.viewMode === 'ESTIMATE'); // Misc is auto-calc in Estimate
 
                 const row = document.createElement('div');
                 row.className = 'expense-row';
 
-                // Custom row delete button logic
                 let delBtn = '<div></div>';
                 if (state.customRows.includes(cat)) {
                     delBtn = `<button class="btn-del" onclick="deleteExpense('${cat}')">×</button>`;
                 }
 
-                // If custom row, make name editable? No, simple for now.
-                // Just inputs
                 let labelHtml = `<label>${cat}</label>`;
                 if (state.customRows.includes(cat)) {
                     labelHtml = `<input type="text" value="${cat}" placeholder="Name" onchange="renameCustom('${cat}', this.value)" style="text-align:left; background:transparent; padding:0;">`;
@@ -1448,7 +1480,6 @@
                     ${labelHtml}
                     <input type="number" 
                            value="${valueToShow}" 
-                           ${isReadOnly ? 'readonly' : ''} 
                            oninput="updateCalc('${cat}', this.value)"
                            placeholder="0"
                     >
@@ -1463,19 +1494,14 @@
         function toggleViewMode(mode) {
             state.viewMode = mode;
             updateViewUI();
-            renderExpensesList(); // Re-render inputs
+            renderExpensesList();
             calculate();
         }
 
         function updateViewUI() {
-            // Toggle Buttons
             document.getElementById('toggle-est').className = state.viewMode === 'ESTIMATE' ? 'toggle-option active' : 'toggle-option';
             document.getElementById('toggle-act').className = state.viewMode === 'ACTUALS' ? 'toggle-option active' : 'toggle-option';
-
-            // Headers
-            document.getElementById('expenses-header').innerText = state.viewMode === 'ESTIMATE' ? "Estimated Expenses (Per Day)" : "Actual Expenses (Total)";
-
-            // Show/Hide Estimate Calc Card
+            document.getElementById('expenses-header').innerText = state.viewMode === 'ESTIMATE' ? "Estimated Expenses" : "Actual Expenses";
             document.getElementById('estimate-calc-card').style.display = state.viewMode === 'ESTIMATE' ? 'block' : 'none';
             document.getElementById('actuals-calc-card').style.display = state.viewMode === 'ACTUALS' ? 'block' : 'none';
         }
@@ -1491,42 +1517,32 @@
 
         function addCustomExpenseRow(name = "", amt = 0) {
             const id = name || "Custom " + (state.customRows.length + 1);
-
-            // Fix for "Cannot read properties of undefined (reading 'actual')"
-            // Ensure we don't add duplicates or mess up state
             if (!state.expensesData[id]) {
                 state.expensesData[id] = { estimate: 0, actual: 0 };
-                // Only push to rows if it's new
                 if (!state.customRows.includes(id)) {
                     state.customRows.push(id);
                 }
             }
-
             renderExpensesList();
             calculate();
         }
 
         function renameCustom(oldId, newName) {
-            if (!newName || state.expensesData[newName]) return; // Prevent dupes
-            if (!state.expensesData[oldId]) return; // Guard
+            if (!newName || state.expensesData[newName]) return;
+            if (!state.expensesData[oldId]) return;
 
-            // Move data
             state.expensesData[newName] = state.expensesData[oldId];
             delete state.expensesData[oldId];
 
-            // Update list
             const idx = state.customRows.indexOf(oldId);
             if (idx !== -1) state.customRows[idx] = newName;
 
-            // Re-render to update IDs and listeners
             renderExpensesList();
             calculate();
         }
 
         function deleteExpense(id) {
-            if (state.expensesData[id]) {
-                delete state.expensesData[id];
-            }
+            if (state.expensesData[id]) delete state.expensesData[id];
             state.customRows = state.customRows.filter(r => r !== id);
             renderExpensesList();
             calculate();
@@ -1534,10 +1550,7 @@
 
         function updateCalc(key, val) {
             const num = parseFloat(val) || 0;
-            // Defensive Check
-            if (!state.expensesData[key]) {
-                state.expensesData[key] = { estimate: 0, actual: 0 };
-            }
+            if (!state.expensesData[key]) state.expensesData[key] = { estimate: 0, actual: 0 };
 
             if (state.viewMode === 'ESTIMATE') {
                 state.expensesData[key].estimate = num;
@@ -1547,62 +1560,101 @@
             calculate();
         }
 
-        function calculate() {
-            const miscCat = 'Other Miscellaneous';
-            // Guard against uninitialized state crash
-            if (!state.expensesData || !state.expensesData[miscCat]) return;
-
-            const days = parseFloat(document.getElementById('inp-days').value) || 1;
-
-            // 1. Calculate Estimate Totals
-            let estSubtotal = 0;
-            for (let k in state.expensesData) {
-                // Defensive check inside loop
-                if (state.expensesData[k] && k !== miscCat) {
-                    estSubtotal += (state.expensesData[k].estimate || 0);
+        // Special override logic for Misc & Cut boxes
+        function overrideSpecial(type, mode, val) { 
+            const key = type === 'Misc' ? 'Miscellaneous' : 'Company Cut';
+            if (!state.expensesData[key]) state.expensesData[key] = { estimate: 0, actual: 0 };
+            
+            // If the user clears the box completely, revert it back to auto-calculation mode!
+            if (val === "" || val === null) {
+                if (mode === 'ESTIMATE') {
+                    if (type === 'Misc') state.manualMisc.est = false;
+                    if (type === 'Cut') state.manualCut.est = false;
+                } else {
+                    if (type === 'Misc') state.manualMisc.act = false;
+                    if (type === 'Cut') state.manualCut.act = false;
+                }
+            } else {
+                const num = parseFloat(val) || 0;
+                if (mode === 'ESTIMATE') {
+                    state.expensesData[key].estimate = num;
+                    if (type === 'Misc') state.manualMisc.est = true;
+                    if (type === 'Cut') state.manualCut.est = true;
+                } else {
+                    state.expensesData[key].actual = num;
+                    if (type === 'Misc') state.manualMisc.act = true;
+                    if (type === 'Cut') state.manualCut.act = true;
                 }
             }
-            // Auto-calc Misc for Estimate
-            const estMisc = estSubtotal * 0.10;
-            state.expensesData[miscCat].estimate = estMisc;
+            calculate();
+        }
 
-            const totalProdCost = (estSubtotal + estMisc) * days;
-            const companyCut = totalProdCost * 0.20;
-            const grandTotalEst = totalProdCost + companyCut;
+        function calculate() {
+            if (!state.expensesData) return;
 
-            // Update Estimate Card UI
-            document.getElementById('val-prod').innerText = formatINR(totalProdCost);
-            document.getElementById('val-cut').innerText = formatINR(companyCut);
+            // 1. Calculate Base Subtotals
+            let estSubtotal = 0;
+            let actSubtotal = 0;
+
+            for (let k in state.expensesData) {
+                if (state.expensesData[k] && k !== 'Miscellaneous' && k !== 'Company Cut') {
+                    estSubtotal += (state.expensesData[k].estimate || 0);
+                    actSubtotal += (state.expensesData[k].actual || 0);
+                }
+            }
+
+            // Ensure special keys exist
+            if (!state.expensesData['Miscellaneous']) state.expensesData['Miscellaneous'] = { estimate: 0, actual: 0 };
+            if (!state.expensesData['Company Cut']) state.expensesData['Company Cut'] = { estimate: 0, actual: 0 };
+
+            // 2. Auto-calc logic ESTIMATE
+            if (!state.manualMisc.est) state.expensesData['Miscellaneous'].estimate = estSubtotal * 0.10;
+            let estMisc = state.expensesData['Miscellaneous'].estimate || 0;
+
+            if (!state.manualCut.est) state.expensesData['Company Cut'].estimate = (estSubtotal + estMisc) * 0.20;
+            let estCut = state.expensesData['Company Cut'].estimate || 0;
+
+            const grandTotalEst = estSubtotal + estMisc + estCut;
+
+            // 3. Auto-calc logic ACTUALS
+            if (!state.manualMisc.act) state.expensesData['Miscellaneous'].actual = actSubtotal * 0.10;
+            let actMisc = state.expensesData['Miscellaneous'].actual || 0;
+
+            if (!state.manualCut.act) state.expensesData['Company Cut'].actual = (actSubtotal + actMisc) * 0.20;
+            let actCut = state.expensesData['Company Cut'].actual || 0;
+
+            const grandTotalAct = actSubtotal + actMisc + actCut;
+
+            // 4. Update UI Estimate
+            document.getElementById('val-prod').innerText = formatINR(estSubtotal);
+            
+            // Protect inputs from having text replaced while the user is actively typing in them!
+            const inpEstMisc = document.getElementById('inp-est-misc');
+            if (inpEstMisc && document.activeElement !== inpEstMisc) {
+                inpEstMisc.value = state.manualMisc.est ? Math.round(estMisc) : (Math.round(estMisc) || "");
+            }
+            
+            const inpEstCut = document.getElementById('inp-est-cut');
+            if (inpEstCut && document.activeElement !== inpEstCut) {
+                inpEstCut.value = state.manualCut.est ? Math.round(estCut) : (Math.round(estCut) || "");
+            }
             document.getElementById('val-total').innerText = formatINR(grandTotalEst);
 
-            // Re-update misc input if visible
-            if (state.viewMode === 'ESTIMATE') {
-                const miscRow = document.getElementById('row-Other-Miscellaneous');
-                if (miscRow) miscRow.querySelector('input').value = Math.round(estMisc);
+            // 5. Update UI Actuals
+            document.getElementById('val-act-prod').innerText = formatINR(actSubtotal);
+            
+            const inpActMisc = document.getElementById('inp-act-misc');
+            if (inpActMisc && document.activeElement !== inpActMisc) {
+                inpActMisc.value = state.manualMisc.act ? Math.round(actMisc) : (Math.round(actMisc) || "");
             }
-
-            // 2. Calculate Actuals Totals (Simple Sum)
-            let totalActuals = 0;
-            for (let k in state.expensesData) {
-                if (state.expensesData[k]) {
-                    totalActuals += (state.expensesData[k].actual || 0);
-                }
+            
+            const inpActCut = document.getElementById('inp-act-cut');
+            if (inpActCut && document.activeElement !== inpActCut) {
+                inpActCut.value = state.manualCut.act ? Math.round(actCut) : (Math.round(actCut) || "");
             }
-
-            // Update Actuals Card UI
-            document.getElementById('val-act-total').innerText = "";
-
-
-            // Update Actuals Card UI
-            // Requirement: "company cut calculated in the estimation section should be same for the actuals section"
-            // calc companyCut was calculated above
-            const grandTotalAct = totalActuals + companyCut;
-
-            document.getElementById('val-act-prod').innerText = formatINR(totalActuals);
-            document.getElementById('val-act-cut').innerText = formatINR(companyCut);
             document.getElementById('val-act-total').innerText = formatINR(grandTotalAct);
 
-            // 3. Update Dashboard
+            // 6. Update Dashboard & Preview
             updateDashboard(grandTotalEst, grandTotalAct);
             updateLivePreview(formatINR(grandTotalEst));
         }
@@ -1616,7 +1668,6 @@
             remEl.innerText = formatINR(remaining);
             remEl.style.color = remaining >= 0 ? 'var(--success)' : 'var(--danger)';
 
-            // Progress Bar
             let pct = 0;
             if (budget > 0) pct = (spent / budget) * 100;
             if (pct > 100) pct = 100;
@@ -1636,7 +1687,6 @@
             t += `Shoot Days: ${document.getElementById('inp-days').value}\n\n`;
             t += `Breakdown:\n`;
 
-            // Only showing estimates in whatsapp text for quote
             Object.entries(state.expensesData).forEach(([k, v]) => {
                 if (v.estimate > 0) t += `* ${k}: ${formatINR(v.estimate)}\n`;
             });
@@ -1659,7 +1709,6 @@
 
             const p = state.selectedProject;
 
-            // Update Project Meta
             await supabaseClient.from('projects').update({
                 date: document.getElementById('inp-date').value,
                 days: document.getElementById('inp-days').value,
@@ -1669,16 +1718,13 @@
                 category: p.category
             }).eq('id', p.id);
 
-            // Update Expenses
-            // Strategy: Delete all for project and re-insert. 
-            // Since we hold all state in memory, this is safe and easy.
             await supabaseClient.from('expenses').delete().eq('project_id', p.id);
 
             const toInsert = Object.entries(state.expensesData).map(([name, data]) => ({
                 project_id: p.id,
                 category_name: name,
                 amount: data.estimate,
-                actual_amount: data.actual // NEW FIELD
+                actual_amount: data.actual
             }));
 
             if (toInsert.length > 0) {
@@ -1689,7 +1735,6 @@
             showToast("Changes Saved!");
         }
 
-        // ... [Client/Project Create functions same as before] ...
         async function submitNewClient() {
             if (!supabaseClient) return;
             const name = document.getElementById('modal-client-name').value;
@@ -1751,11 +1796,9 @@
             const pdfContainer = document.getElementById('pdf-container');
             pdfContainer.classList.add('generating');
 
-            // Inject Data
             const clientName = state.selectedClient ? state.selectedClient.name : "Client";
             const projName = state.selectedProject ? state.selectedProject.name : "Video Project";
 
-            // Date Logic
             const isUnscheduled = document.getElementById('chk-unscheduled').checked;
             const dateRaw = document.getElementById('inp-date').value;
             let dateText = "SHOOT: DATE TBD";
@@ -1779,12 +1822,10 @@
 
             const featureList = document.getElementById('pdf-features');
 
-            // Build Features List
             let listHtml = ``;
             listHtml += `<li>${days} Day Shoot Schedule</li>`;
             listHtml += `<li>${videos} High-Fidelity Reels/Videos</li>`;
 
-            // Conditional Photo Line
             if (parseInt(photos) > 0) {
                 listHtml += `<li>${photos} Edited High-Res Photos</li>`;
             }
@@ -1823,57 +1864,31 @@
             const pdfContainer = document.getElementById('pdf-container');
             pdfContainer.classList.add('generating');
 
-            // 1. Header Info
             const clientName = state.selectedClient ? state.selectedClient.name : "Client";
             document.getElementById('rpt-client-name').innerText = clientName;
             document.getElementById('rpt-date').innerText = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
-            // 2. Build Table Rows
             const tbody = document.getElementById('rpt-table-body');
             tbody.innerHTML = '';
 
-            // Rewrite Table Header to include P/L
-            const thead = document.querySelector('.pdf-report-table thead tr');
-            thead.innerHTML = `
-                <th>Category</th>
-                <th>Budget</th>
-                <th>Actual</th>
-                <th>P/L</th>
-            `;
-
             let totalActual = 0;
             let totalBudget = 0;
-            const days = parseFloat(document.getElementById('inp-days').value) || 1;
 
-            // Sort so miscellaneous is last
-            const sortedKeys = Object.keys(state.expensesData).sort((a, b) => a === 'Other Miscellaneous' ? 1 : -1);
+            // Sort logic to make sure Misc and Company Cut appear logically at the bottom of the list
+            const sortedKeys = Object.keys(state.expensesData).sort((a, b) => {
+                if (a === 'Company Cut') return 1;
+                if (b === 'Company Cut') return -1;
+                if (a === 'Miscellaneous') return 1;
+                if (b === 'Miscellaneous') return -1;
+                return 0; 
+            });
 
             sortedKeys.forEach(key => {
                 const data = state.expensesData[key];
                 if (!data) return;
 
-                // Logic: 
-                // Misc works differently? No, in calculate() we derived it.
-                // But here we need to READ the values generated/stored.
-                // Note: calculate() runs on input, updating state.expensesData[misc].estimate.
-                // So state is up to date.
-
-                // Line item budget
-                const lineBudget = data.estimate * ((key === 'Other Miscellaneous') ? 1 : days);
-                // Wait! In calculate(): totalProdCost = (estSubtotal + estMisc) * days; 
-                // This implies estMisc is per-day too? 
-                // "const estMisc = estSubtotal * 0.10;" -> derived from per-day subtotal.
-                // So yes, everything in expensesData is "Per Day".
-                // EXCEPT: if the user concept is "Project-based". 
-                // The prompt for calculating total was: `(estSubtotal + estMisc) * days`.
-                // So to get total budget for line item, we multiply by days.
-
-                const lineActual = data.actual || 0;
-                // Wait, is "Actual" per day or total? 
-                // The input placeholder says "Actual Expenses (Total)".
-                // So `data.actual` is TOTAL. `data.estimate` is PER DAY.
-
-                const finalBudget = data.estimate * days;
+                // Total is now just the exact stored estimate! No multiplier.
+                const finalBudget = data.estimate;
                 const finalActual = data.actual || 0;
 
                 totalBudget += finalBudget;
@@ -1886,6 +1901,11 @@
 
                 if (finalBudget > 0 || finalActual > 0) {
                     const tr = document.createElement('tr');
+                    // Give a slight visual emphasis to the bottom totals
+                    if(key === 'Company Cut') {
+                        tr.style.backgroundColor = "#f9f9f9";
+                        tr.style.fontWeight = "600";
+                    }
                     tr.innerHTML = `
                         <td>${key}</td>
                         <td>${formatINR(finalBudget)}</td>
@@ -1896,35 +1916,10 @@
                 }
             });
 
-            // Add Company Cut Row
-            // Company Cut is calculated from Budget.
-            const cutValStr = document.getElementById('val-cut').innerText;
-            const cutVal = parseFloat(cutValStr.replace(/[₹,]/g, '')) || 0;
-
-            // Cut is fixed based on estimate as per user request
-            const cutBudget = cutVal;
-            const cutActual = cutVal; // Same for actuals
-
-            totalBudget += cutBudget;
-            totalActual += cutActual;
-
-            const trCut = document.createElement('tr');
-            trCut.style.backgroundColor = "#f9f9f9";
-            trCut.style.fontWeight = "600";
-            trCut.innerHTML = `
-                <td>Company Cut (20%)</td>
-                <td>${formatINR(cutBudget)}</td>
-                <td>${formatINR(cutActual)}</td>
-                <td>-</td>
-            `;
-            tbody.appendChild(trCut);
-
-            // 3. Totals (Budget & Actual)
-            // We want to show both.
-            // Replace the simplistic total with a dual-column display
-            const headerRight = document.querySelector('#report-content .pdf-plan-header > div:last-child');
+            // Rebuild dual-column grand total display
+            const headerRight = document.getElementById('rpt-header-right');
             headerRight.innerHTML = `
-                <div style="display:flex; gap:30px; text-align:right;">
+                <div style="display:flex; gap:30px; text-align:right; justify-content: flex-end;">
                     <div>
                         <div style="font-size:9px; color:#666; font-weight:600; text-transform:uppercase;">Estimated</div>
                         <div style="font-size:18px; font-weight:800; color:#000;">${formatINR(totalBudget)}</div>
@@ -1936,10 +1931,6 @@
                 </div>
             `;
 
-            //document.getElementById('rpt-total-spent').innerText = formatINR(totalActual);
-            document.querySelector('.pdf-plan-name').innerText = "Grand Total";
-
-            // 4. Status
             const statusEl = document.getElementById('rpt-status');
             const netDiff = totalBudget - totalActual;
 
